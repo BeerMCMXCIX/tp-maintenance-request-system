@@ -2,11 +2,11 @@ import express from "express";
 import cors from "cors";
 import { createTicketRouter } from "./routes/ticket.route";
 import { errorHandler } from "./middleware/errors";
-import { staffGuard } from "./middleware/staff";
+import { createAuthRouter } from "./routes/auth.route";
 
 export interface AppConfig {
   clientOrigins: string[];
-  staffAccessKey: string;
+  userBootstrapKey: string;
 }
 
 export function createApp(config: AppConfig) {
@@ -21,14 +21,8 @@ export function createApp(config: AppConfig) {
   app.get("/api/health", (_req, res) => {
     res.json({ success: true, data: { status: "ok" } });
   });
-  app.post(
-    "/api/staff/verify",
-    staffGuard(config.staffAccessKey),
-    (_req, res) => {
-      res.json({ success: true, data: { verified: true } });
-    },
-  );
-  app.use("/api/tickets", createTicketRouter(config.staffAccessKey));
+  app.use("/api", createAuthRouter(config.userBootstrapKey));
+  app.use("/api/tickets", createTicketRouter());
   app.use((_req, res) => {
     res.status(404).json({ success: false, error: "ไม่พบ API ที่ร้องขอ" });
   });

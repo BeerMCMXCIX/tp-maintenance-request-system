@@ -36,6 +36,7 @@ export async function updateTicket(req: Request, res: Response): Promise<void> {
     data: await tickets.update(
       ticketIdSchema.parse(req.params.id),
       updateTicketSchema.parse(req.body),
+      req.authUser!,
     ),
   });
 }

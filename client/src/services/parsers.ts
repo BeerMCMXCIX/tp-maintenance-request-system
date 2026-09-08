@@ -1,11 +1,15 @@
 import {
   isTicketStatus,
+  roleLabels,
   statusLabels,
+  type AuthSession,
+  type AuthUser,
   type Ticket,
   type TicketPage,
   type RequestItem,
   type TicketEvent,
   type TicketStatus,
+  type UserRole,
 } from "../domain/tickets";
 
 function invalid(): never {
@@ -28,6 +32,10 @@ const date = (value: unknown): string =>
   Number.isFinite(Date.parse(string(value))) ? string(value) : invalid();
 const status = (value: unknown): TicketStatus =>
   isTicketStatus(value) ? value : invalid();
+const role = (value: unknown): UserRole =>
+  typeof value === "string" && Object.hasOwn(roleLabels, value)
+    ? (value as UserRole)
+    : invalid();
 function array<T>(value: unknown, parse: (item: unknown) => T): T[] {
   return Array.isArray(value) ? value.map(parse) : invalid();
 }
@@ -92,5 +100,24 @@ export function parsePage(value: unknown): TicketPage {
       totalPages: integer(pagination.totalPages),
     },
     stats: { total: integer(stats.total), counts: validCounts },
+  };
+}
+
+export function parseUser(value: unknown): AuthUser {
+  const user = record(value);
+  return {
+    id: integer(user.id),
+    username: string(user.username),
+    displayName: string(user.displayName),
+    role: role(user.role),
+  };
+}
+
+export function parseSession(value: unknown): AuthSession {
+  const session = record(value);
+  return {
+    token: string(session.token),
+    expiresAt: date(session.expiresAt),
+    user: parseUser(session.user),
   };
 }

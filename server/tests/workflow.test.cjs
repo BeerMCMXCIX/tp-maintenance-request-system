@@ -62,7 +62,6 @@ test("workflow requires paper approval before purchasing and has terminal states
   assert.equal(
     updateTicketSchema.safeParse({
       status: "APPROVED",
-      actor: "QA",
       note: " ",
       version: 0,
     }).success,

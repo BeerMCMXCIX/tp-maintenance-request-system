@@ -1,11 +1,38 @@
-import { useEffect, useState } from "react";
-import { errorMessage, getTicket, getTickets } from "./services/api";
-import type { Ticket, TicketPage, TicketQuery } from "./domain/tickets";
+import { useEffect, useState, useCallback } from "react";
+import { errorMessage, getMe, getTicket, getTickets } from "./services/api";
+import type { AuthSession, Ticket, TicketPage, TicketQuery } from "./domain/tickets";
 import TicketForm from "./components/TicketForm";
 import TicketList from "./components/TicketList";
 import DashboardStats from "./components/DashboardStats";
 import TicketDetail from "./components/TicketDetail";
-import StaffAccess from "./components/StaffAccess";
+import AuthAccess from "./components/AuthAccess";
+
+const SESSION_KEY = "tp_auth_session";
+
+function saveSession(session: AuthSession | null) {
+  if (session) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } else {
+    localStorage.removeItem(SESSION_KEY);
+  }
+}
+
+function loadSession(): AuthSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AuthSession;
+    // Check if token has expired client-side
+    if (parsed.expiresAt && new Date(parsed.expiresAt) < new Date()) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+}
 
 type View =
   | { kind: "list" }
@@ -39,7 +66,29 @@ export default function App() {
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [notice, setNotice] = useState("");
-  const [staffKey, setStaffKey] = useState("");
+  const [session, setSessionRaw] = useState<AuthSession | null>(loadSession);
+
+  const setSession = useCallback((next: AuthSession | null) => {
+    setSessionRaw(next);
+    saveSession(next);
+  }, []);
+
+  // Verify saved session with server on mount
+  useEffect(() => {
+    const saved = loadSession();
+    if (!saved) return;
+    getMe(saved.token)
+      .then((user) => {
+        // Update user info from server (role may have changed)
+        setSessionRaw({ ...saved, user });
+        saveSession({ ...saved, user });
+      })
+      .catch(() => {
+        // Token expired or invalid on server side
+        setSessionRaw(null);
+        localStorage.removeItem(SESSION_KEY);
+      });
+  }, []);
 
   useEffect(() => {
     function navigate() {
@@ -112,12 +161,7 @@ export default function App() {
             <span>IT Service<small>ระบบแจ้งซ่อมและขออุปกรณ์</small></span>
           </a>
           <div className="header-actions">
-            {staffKey && <span className="staff-indicator">โหมดเจ้าหน้าที่</span>}
-            <StaffAccess
-              active={Boolean(staffKey)}
-              onLogin={setStaffKey}
-              onLogout={() => setStaffKey("")}
-            />
+            <AuthAccess session={session} onLogin={setSession} onLogout={() => setSession(null)} />
           </div>
         </div>
       </header>
@@ -178,7 +222,7 @@ export default function App() {
             : <TicketDetail
                 key={ticket.id}
                 ticket={ticket}
-                staffKey={staffKey}
+                session={session}
                 onBack={() => go("")}
                 onUpdated={setTicket}
               />

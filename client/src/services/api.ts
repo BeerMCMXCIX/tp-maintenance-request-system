@@ -3,7 +3,7 @@ import type {
   TicketQuery,
   TicketStatus,
 } from "../domain/tickets";
-import { parsePage, parseTicket, record } from "./parsers";
+import { parsePage, parseSession, parseTicket, parseUser, record } from "./parsers";
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
 export class ApiError extends Error {
@@ -70,8 +70,8 @@ export async function createTicket(input: CreateTicketInput) {
 }
 export async function updateTicketStatus(
   id: number,
-  input: { status: TicketStatus; actor: string; note: string; version: number },
-  key: string,
+  input: { status: TicketStatus; note: string; version: number },
+  token: string,
 ) {
   return parseTicket(
     (
@@ -79,18 +79,31 @@ export async function updateTicketStatus(
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + key,
+          Authorization: "Bearer " + token,
         },
         body: JSON.stringify(input),
       })
     ).data,
   );
 }
-export async function verifyStaff(key: string) {
-  await request("/staff/verify", {
+export async function login(username: string, password: string) {
+  return parseSession((await request("/auth/login", {
     method: "POST",
-    headers: { Authorization: "Bearer " + key },
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  })).data);
+}
+export async function logout(token: string) {
+  await request("/auth/logout", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token },
   });
+}
+export async function getMe(token: string) {
+  const body = await request("/auth/me", {
+    headers: { Authorization: "Bearer " + token },
+  });
+  return parseUser(record(body.data).user);
 }
 export const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "เกิดข้อผิดพลาด กรุณาลองใหม่";

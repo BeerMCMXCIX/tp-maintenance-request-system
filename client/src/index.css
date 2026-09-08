@@ -223,6 +223,22 @@ legend {
   color: var(--primary);
   font-size: 12px;
 }
+.signed-in-user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.signed-in-user > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.signed-in-user small {
+  color: var(--muted);
+  font-size: 10px;
+}
 .main-container {
   max-width: 1280px;
   margin: 0 auto;
@@ -866,6 +882,9 @@ legend {
     padding: 9px;
   }
   .staff-indicator {
+    display: none;
+  }
+  .signed-in-user > span {
     display: none;
   }
   .page-heading {

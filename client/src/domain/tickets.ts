@@ -9,6 +9,23 @@ export const statusLabels = {
   CANCELLED: "ยกเลิก",
 } as const;
 export type TicketStatus = keyof typeof statusLabels;
+export const roleLabels = {
+  ADMIN: "ผู้ดูแลระบบ",
+  IT: "เจ้าหน้าที่ IT",
+  PROCUREMENT: "เจ้าหน้าที่จัดซื้อ",
+} as const;
+export type UserRole = keyof typeof roleLabels;
+export interface AuthUser {
+  id: number;
+  username: string;
+  displayName: string;
+  role: UserRole;
+}
+export interface AuthSession {
+  token: string;
+  expiresAt: string;
+  user: AuthUser;
+}
 export interface RequestItem {
   name: string;
   quantity: number;
@@ -86,4 +103,27 @@ export function estimatedTotal(items: RequestItem[]) {
       0,
     ) / 100
   );
+}
+
+const roleTransitions: Record<
+  Exclude<UserRole, "ADMIN">,
+  Readonly<Partial<Record<TicketStatus, readonly TicketStatus[]>>>
+> = {
+  IT: {
+    PENDING: ["IN_REVIEW", "CANCELLED"],
+    IN_REVIEW: ["AWAITING_APPROVAL", "COMPLETED", "CANCELLED"],
+  },
+  PROCUREMENT: {
+    AWAITING_APPROVAL: ["APPROVED", "REJECTED", "CANCELLED"],
+    APPROVED: ["PURCHASING", "CANCELLED"],
+    PURCHASING: ["COMPLETED", "CANCELLED"],
+  },
+};
+
+export function canRoleTransition(
+  role: UserRole,
+  from: TicketStatus,
+  to: TicketStatus,
+): boolean {
+  return role === "ADMIN" || (roleTransitions[role][from]?.includes(to) ?? false);
 }

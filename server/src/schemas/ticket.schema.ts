@@ -33,7 +33,6 @@ export const listTicketsSchema = z.object({
 });
 export const updateTicketSchema = z.object({
   status: z.enum(statuses),
-  actor: text(100),
   note: text(2000),
   version: z.number().int().min(0),
 }).strict();

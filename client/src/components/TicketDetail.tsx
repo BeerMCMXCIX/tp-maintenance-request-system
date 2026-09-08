@@ -7,8 +7,11 @@ import {
 } from "../services/api";
 import {
   dateTime,
+  canRoleTransition,
   isTicketStatus,
+  roleLabels,
   statusLabels,
+  type AuthSession,
   type Ticket,
   type TicketStatus,
 } from "../domain/tickets";
@@ -17,27 +20,26 @@ import StatusBadge from "./StatusBadge";
 
 interface Props {
   ticket: Ticket;
-  staffKey: string;
+  session: AuthSession | null;
   onBack: () => void;
   onUpdated: (ticket: Ticket) => void;
 }
 export default function TicketDetail({
   ticket,
-  staffKey,
+  session,
   onBack,
   onUpdated,
 }: Props) {
   const [nextStatus, setNextStatus] = useState<TicketStatus | "">("");
-  const [actor, setActor] = useState(""),
-    [note, setNote] = useState("");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!nextStatus || busy) return;
-    if (!actor.trim() || !note.trim()) {
-      setError("กรุณาระบุผู้บันทึกและรายละเอียด");
+    if (!note.trim()) {
+      setError("กรุณาระบุรายละเอียด");
       return;
     }
     setBusy(true);
@@ -48,11 +50,10 @@ export default function TicketDetail({
         ticket.id,
         {
           status: nextStatus,
-          actor: actor.trim(),
           note: note.trim(),
           version: ticket.version,
         },
-        staffKey,
+        session!.token,
       );
       onUpdated(updated);
       setNextStatus("");
@@ -118,16 +119,18 @@ export default function TicketDetail({
           </section>
           <section className="panel">
             <h2>บันทึกผลโดยเจ้าหน้าที่</h2>
-            {!staffKey ? (
+            {!session ? (
               <p className="muted">
-                เข้าโหมดเจ้าหน้าที่จากปุ่มด้านบนเพื่อบันทึกผลตรวจซ่อม ผลลงนาม
-                หรือสถานะจัดซื้อ
+                เข้าสู่ระบบจากปุ่มด้านบนเพื่อบันทึกผลตามสิทธิ์ของบัญชี
               </p>
-            ) : ticket.allowedTransitions.length === 0 ? (
-              <p className="muted">คำขอนี้สิ้นสุดการดำเนินงานแล้ว</p>
+            ) : ticket.allowedTransitions.filter(status =>
+              canRoleTransition(session.user.role, ticket.status, status),
+            ).length === 0 ? (
+              <p className="muted">Role {roleLabels[session.user.role]} ไม่มีรายการที่ต้องดำเนินการในสถานะนี้</p>
             ) : (
               <form onSubmit={submit} className="stack">
                 <p className="muted small">
+                  ผู้บันทึก: <strong>{session.user.displayName}</strong> · {roleLabels[session.user.role]}<br />
                   บันทึกตามผลดำเนินงานจริง การระบุ “อนุมัติแล้ว”
                   หมายถึงได้รับเอกสารลงนามแล้ว
                 </p>
@@ -146,8 +149,8 @@ export default function TicketDetail({
                     {ticket.allowedTransitions
                       .filter(
                         (status) =>
-                          status !== "AWAITING_APPROVAL" ||
-                          ticket.items.length > 0,
+                          canRoleTransition(session.user.role, ticket.status, status) &&
+                          (status !== "AWAITING_APPROVAL" || ticket.items.length > 0),
                       )
                       .map((status) => (
                         <option key={status} value={status}>
@@ -155,16 +158,6 @@ export default function TicketDetail({
                         </option>
                       ))}
                   </select>
-                </label>
-                <label>
-                  ชื่อผู้บันทึก
-                  <input
-                    required
-                    maxLength={100}
-                    value={actor}
-                    disabled={busy}
-                    onChange={(e) => setActor(e.target.value)}
-                  />
                 </label>
                 <label>
                   รายละเอียด / หลักฐานอ้างอิง

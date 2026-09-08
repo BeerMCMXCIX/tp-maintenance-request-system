@@ -12,7 +12,7 @@ const env = z
     CLIENT_ORIGINS: z
       .string()
       .default("http://localhost:5173,http://127.0.0.1:5173"),
-    STAFF_ACCESS_KEY: z.preprocess(
+    USER_BOOTSTRAP_KEY: z.preprocess(
       (value) => (value === "" ? undefined : value),
       z.string().min(16).optional(),
     ),
@@ -23,7 +23,8 @@ const app = createApp({
   clientOrigins: env.CLIENT_ORIGINS.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
-  staffAccessKey: env.STAFF_ACCESS_KEY ?? "",
+  userBootstrapKey:
+    env.USER_BOOTSTRAP_KEY ?? process.env.STAFF_ACCESS_KEY ?? "",
 });
 
 const server = app.listen(env.PORT, () => {
