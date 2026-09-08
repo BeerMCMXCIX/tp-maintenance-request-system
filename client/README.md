@@ -1,75 +1,32 @@
-# React + TypeScript + Vite
+# TP IT Service — Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript + Vite + Tailwind CSS สำหรับแจ้งซ่อม / ขออุปกรณ์ IT และพิมพ์เอกสารด้วยตนเอง
 
-Currently, two official plugins are available:
+## เริ่มใช้งาน
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. เริ่ม server และตั้งฐานข้อมูลตาม `../server/README.md`
+2. `npm install`
+3. `npm run dev`
+4. เปิด http://localhost:5173
 
-## React Compiler
+Vite ส่ง `/api` ไปที่ `http://127.0.0.1:5000` อัตโนมัติ หาก API อยู่เครื่องอื่น ตั้ง `VITE_API_URL` ตาม `.env.example` แล้ว restart Vite
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Production: `npm run build` แล้วให้ web server เสิร์ฟ `dist` พร้อม reverse proxy `/api` ไป backend หรือกำหนด VITE_API_URL ตอน build พร้อมตั้ง CLIENT_ORIGINS ฝั่ง server ให้ถูกต้อง
 
-## Expanding the ESLint configuration
+## การใช้งาน
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- กด **แจ้งซ่อม / ขออุปกรณ์** กรอกผู้ขอ แผนก สถานที่ และอาการเสีย
+- ถ้าต้องการขอจัดซื้อ ให้เพิ่มรายการ จำนวน หน่วย และราคาประมาณการ (เว้นว่างหากยังไม่ทราบ)
+- บันทึกแล้วได้รับเลขเอกสาร เปิดรายละเอียดเพื่อดูประวัติและพิมพ์ซ้ำได้
+- **พิมพ์เอกสาร / บันทึก PDF** ใช้หน้าพิมพ์ของเบราว์เซอร์ เลือก A4 ปิดหัว/ท้ายกระดาษ หรือ Save as PDF เอกสารยาวแบ่งหลายหน้าและคงหัวตาราง
+- นำเอกสารให้ผู้เกี่ยวข้องลงนามตามขั้นตอนบริษัท
+- เจ้าหน้าที่กด **สำหรับเจ้าหน้าที่** ใช้ STAFF_ACCESS_KEY จาก server/.env.local เพื่อบันทึกสถานะและหลักฐานอ้างอิงผลลงนาม
+- ค้นหาด้วยเลขเอกสาร หัวข้อ ผู้ขอ แผนก หรือรหัสทรัพย์สิน รองรับกรองสถานะ เรียงลำดับ และแบ่งหน้า
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+เวอร์ชันนี้ใช้การเซ็นเอกสารกระดาษ มีรหัสร่วมสำหรับเจ้าหน้าที่ ยังไม่มีบัญชีรายบุคคลหรือการอนุมัติอิเล็กทรอนิกส์
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## ตรวจสอบ
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+- `npm run build`: TypeScript และ production bundle
+- `npm run lint`: ESLint / React Hooks
+- API ตรวจสอบด้วย tests ฝั่ง server
