@@ -1,5 +1,43 @@
 @import "tailwindcss";
 
+.login-layout { min-height: 100dvh; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 64px; max-width: 1100px; padding: 48px 32px; margin: auto; }
+.login-intro { display: grid; gap: 24px; }
+.login-intro .brand-mark { width: 64px; height: 64px; font-size: 24px; }
+.login-card { display: grid; gap: 22px; padding: 36px; }
+.login-card label, .account-form label, .user-editor label { display: grid; gap: 6px; }
+.login-card input, .account-form input, .user-editor input:not([type="checkbox"]), .user-editor select, .management-search input { width: 100%; min-height: 44px; border: 1px solid #c9d7e3; border-radius: 8px; padding: 8px 12px; background: white; }
+.account-navigation, .row-actions, .management-search, .management-pagination { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.account-navigation a { font-size: 14px; color: #126c67; }
+.account-navigation a:hover { text-decoration: underline; }
+.account-card { max-width: 620px; margin: auto; padding: 32px; }
+.account-form { display: grid; gap: 18px; margin-top: 24px; }
+.management-panel { padding: 28px; display: grid; gap: 20px; }
+.management-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap; }
+.management-search input { flex: 1; min-width: 180px; }
+.management-table { overflow-x: auto; }
+.management-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.management-table th, .management-table td { padding: 14px 12px; border-bottom: 1px solid #dde5ed; vertical-align: top; }
+.management-table th { background: #f4f7fa; white-space: nowrap; }
+.management-table .button { padding: 6px 10px; font-size: 13px; min-height: 36px; }
+.permission-summary { display: block; color: #5b6c7f; max-width: 240px; }
+.management-pagination { justify-content: space-between; }
+.danger-text { color: #b42318; }
+.editor-overlay { position: fixed; inset: 0; background: #172b4570; z-index: 100; display: grid; place-items: center; padding: 20px; }
+.user-editor { width: min(100%, 560px); max-height: 90dvh; overflow-y: auto; padding: 28px; }
+.user-editor form, .user-editor fieldset { display: grid; gap: 16px; }
+.user-editor fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.user-editor .check-label { display: flex; align-items: center; gap: 10px; }
+.check-label input { width: 18px; height: 18px; }
+.management-table pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 440px; font-size: 12px; }
+@media (max-width: 800px) {
+  .login-layout { grid-template-columns: 1fr; gap: 28px; padding: 24px 16px; }
+  .login-intro h1 { font-size: 26px; }
+  .login-intro { gap: 12px; }
+  .login-card, .account-card, .management-panel { padding: 22px; }
+  .header-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .account-navigation { justify-content: flex-end; }
+}
+
 :root {
   font-family: "Leelawadee UI", Tahoma, system-ui, sans-serif;
   color: #172b45;

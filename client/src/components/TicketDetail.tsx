@@ -21,12 +21,14 @@ import StatusBadge from "./StatusBadge";
 interface Props {
   ticket: Ticket;
   session: AuthSession | null;
+  onSessionExpired: () => void;
   onBack: () => void;
   onUpdated: (ticket: Ticket) => void;
 }
 export default function TicketDetail({
   ticket,
   session,
+  onSessionExpired,
   onBack,
   onUpdated,
 }: Props) {
@@ -37,7 +39,11 @@ export default function TicketDetail({
     [notice, setNotice] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!nextStatus || busy) return;
+    if (!nextStatus || busy || !session) return;
+    if (!canRoleTransition(session.user.role, ticket.status, nextStatus)) {
+      setError("บัญชีนี้ไม่มีสิทธิ์ทำรายการที่เลือก");
+      return;
+    }
     if (!note.trim()) {
       setError("กรุณาระบุรายละเอียด");
       return;
@@ -53,7 +59,7 @@ export default function TicketDetail({
           note: note.trim(),
           version: ticket.version,
         },
-        session!.token,
+        session.token,
       );
       onUpdated(updated);
       setNextStatus("");
@@ -61,6 +67,7 @@ export default function TicketDetail({
       setNotice("บันทึกสถานะและประวัติเรียบร้อยแล้ว");
     } catch (reason) {
       setError(errorMessage(reason));
+      if (reason instanceof ApiError && reason.status === 401) onSessionExpired();
       if (reason instanceof ApiError && reason.status === 409) {
         try {
           onUpdated(await getTicket(ticket.id));

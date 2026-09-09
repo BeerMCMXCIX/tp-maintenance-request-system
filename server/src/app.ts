@@ -1,4 +1,5 @@
 import express from "express";
+import { createUserRouter } from "./routes/user.route";
 import cors from "cors";
 import { createTicketRouter } from "./routes/ticket.route";
 import { errorHandler } from "./middleware/errors";
@@ -22,6 +23,7 @@ export function createApp(config: AppConfig) {
     res.json({ success: true, data: { status: "ok" } });
   });
   app.use("/api", createAuthRouter(config.userBootstrapKey));
+  app.use("/api", createUserRouter());
   app.use("/api/tickets", createTicketRouter());
   app.use((_req, res) => {
     res.status(404).json({ success: false, error: "ไม่พบ API ที่ร้องขอ" });

@@ -1,45 +1,28 @@
-import { useEffect, useState, useCallback } from "react";
-import { errorMessage, getMe, getTicket, getTickets } from "./services/api";
-import type { AuthSession, Ticket, TicketPage, TicketQuery } from "./domain/tickets";
+import { useEffect, useState } from "react";
+import { errorMessage, getTicket, getTickets } from "./services/api";
+import { hasPermission, type AuthSession, type Ticket, type TicketPage, type TicketQuery } from "./domain/tickets";
 import TicketForm from "./components/TicketForm";
 import TicketList from "./components/TicketList";
 import DashboardStats from "./components/DashboardStats";
 import TicketDetail from "./components/TicketDetail";
 import AuthAccess from "./components/AuthAccess";
+import LoginPage from "./components/LoginPage";
+import AccountPage from "./components/AccountPage";
+import UserManagement from "./components/UserManagement";
+import AuditLogs from "./components/AuditLogs";
 
-const SESSION_KEY = "tp_auth_session";
-
-function saveSession(session: AuthSession | null) {
-  if (session) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  } else {
-    localStorage.removeItem(SESSION_KEY);
-  }
-}
-
-function loadSession(): AuthSession | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AuthSession;
-    // Check if token has expired client-side
-    if (parsed.expiresAt && new Date(parsed.expiresAt) < new Date()) {
-      localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-    return parsed;
-  } catch {
-    localStorage.removeItem(SESSION_KEY);
-    return null;
-  }
-}
+import { useAuthSession } from "./hooks/useAuthSession";
 
 type View =
+  | { kind: "account" | "users" | "logs" }
   | { kind: "list" }
   | { kind: "create" }
   | { kind: "detail"; id: number };
 
 function readView(): View {
+  if (window.location.hash === "#account") return { kind: "account" };
+  if (window.location.hash === "#users") return { kind: "users" };
+  if (window.location.hash === "#logs") return { kind: "logs" };
   if (window.location.hash === "#new") return { kind: "create" };
   const id = /^#tickets\/(\d+)$/.exec(window.location.hash)?.[1];
   if (id && Number.isSafeInteger(Number(id)) && Number(id) > 0) {
@@ -53,6 +36,16 @@ function go(hash: string) {
 }
 
 export default function App() {
+  const { session, verified, error, setSession } = useAuthSession();
+  if (!session) return <LoginPage onLogin={setSession} />;
+  if (!verified) return <main className="login-layout"><section className="panel login-card">
+    <h1>กำลังตรวจสอบการเข้าสู่ระบบ</h1>
+    {error ? <><p className="error-box" role="alert">{error}</p><button className="button primary" onClick={() => window.location.reload()}>ลองใหม่</button><button className="button secondary" onClick={() => setSession(null)}>กลับหน้า Login</button></> : <p role="status">กรุณารอสักครู่…</p>}
+  </section></main>;
+  return <AuthenticatedApp key={session.token} session={session} setSession={setSession} />;
+}
+
+function AuthenticatedApp({ session, setSession }: { session: AuthSession; setSession: (session: AuthSession | null) => void }) {
   const [view, setView] = useState<View>(readView);
   const [query, setQuery] = useState<TicketQuery>({
     page: 1,
@@ -66,29 +59,6 @@ export default function App() {
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [notice, setNotice] = useState("");
-  const [session, setSessionRaw] = useState<AuthSession | null>(loadSession);
-
-  const setSession = useCallback((next: AuthSession | null) => {
-    setSessionRaw(next);
-    saveSession(next);
-  }, []);
-
-  // Verify saved session with server on mount
-  useEffect(() => {
-    const saved = loadSession();
-    if (!saved) return;
-    getMe(saved.token)
-      .then((user) => {
-        // Update user info from server (role may have changed)
-        setSessionRaw({ ...saved, user });
-        saveSession({ ...saved, user });
-      })
-      .catch(() => {
-        // Token expired or invalid on server side
-        setSessionRaw(null);
-        localStorage.removeItem(SESSION_KEY);
-      });
-  }, []);
 
   useEffect(() => {
     function navigate() {
@@ -101,7 +71,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (view.kind === "create") return;
+    if (view.kind !== "list" && view.kind !== "detail") return;
     const abort = new AbortController();
 
     async function load() {
@@ -161,11 +131,20 @@ export default function App() {
             <span>IT Service<small>ระบบแจ้งซ่อมและขออุปกรณ์</small></span>
           </a>
           <div className="header-actions">
-            <AuthAccess session={session} onLogin={setSession} onLogout={() => setSession(null)} />
+            <nav className="account-navigation" aria-label="เมนูผู้ใช้">
+              <a href="#">คำขอ</a>
+              <a href="#account">บัญชีของฉัน</a>
+              {(hasPermission(session.user, "MANAGE_USERS") || hasPermission(session.user, "MANAGE_PERMISSIONS")) && <a href="#users">จัดการผู้ใช้</a>}
+              {hasPermission(session.user, "VIEW_LOGS") && <a href="#logs">Log</a>}
+            </nav>
+            <AuthAccess session={session} onLogout={() => setSession(null)} />
           </div>
         </div>
       </header>
       <main id="main-content" className="main-container" tabIndex={-1}>
+        {view.kind === "account" && <AccountPage user={session.user} onChanged={() => setSession(null)} />}
+        {view.kind === "users" && ((hasPermission(session.user, "MANAGE_USERS") || hasPermission(session.user, "MANAGE_PERMISSIONS")) ? <UserManagement actor={session.user} /> : <p className="error-box">คุณไม่มีสิทธิ์จัดการผู้ใช้</p>)}
+        {view.kind === "logs" && (hasPermission(session.user, "VIEW_LOGS") ? <AuditLogs /> : <p className="error-box">คุณไม่มีสิทธิ์ดู Log</p>)}
         {notice && (
           <div className="success-box notice no-print" role="status">
             <span>{notice}</span>
@@ -220,9 +199,10 @@ export default function App() {
           loading || ticket?.id !== view.id
             ? <div className="panel empty-state" role="status">กำลังโหลดเอกสาร…</div>
             : <TicketDetail
-                key={ticket.id}
+                key={`${ticket.id}:${session?.user.id ?? "guest"}:${session?.user.role ?? ""}`}
                 ticket={ticket}
                 session={session}
+                onSessionExpired={() => setSession(null)}
                 onBack={() => go("")}
                 onUpdated={setTicket}
               />

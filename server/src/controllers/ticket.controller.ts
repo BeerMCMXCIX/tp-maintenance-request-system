@@ -12,7 +12,7 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
     .status(201)
     .json({
       success: true,
-      data: await tickets.create(createTicketSchema.parse(req.body)),
+      data: await tickets.create(createTicketSchema.parse(req.body), req.authUser!),
     });
 }
 

@@ -60,6 +60,10 @@ model User {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   sessions     AuthSession[]
+  department   String        @default("") @db.VarChar(100)
+  branch       String        @default("") @db.VarChar(100)
+  permissions  Json?
+  deletedAt    DateTime?
 
   @@index([role, active])
 }
@@ -74,4 +78,16 @@ model AuthSession {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model AuditLog {
+  id            Int      @id @default(autoincrement())
+  action        String   @db.VarChar(50)
+  actorId       Int?
+  actorUsername String   @default("") @db.VarChar(50)
+  target        String   @default("") @db.VarChar(100)
+  details       String   @db.Text
+  createdAt     DateTime @default(now())
+  @@index([createdAt, id])
+  @@index([actorId, createdAt])
 }

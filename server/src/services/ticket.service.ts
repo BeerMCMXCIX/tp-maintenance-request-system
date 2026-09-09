@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { audit, type AuditActor } from "./audit.service";
 import { prisma } from "../lib/prisma";
 import { HttpError } from "../middleware/errors";
 import { canTransition, transitions } from "../domain/workflow";
@@ -39,23 +40,26 @@ function serialize(ticket: TicketRecord) {
   };
 }
 
-export async function create(input: CreateTicketInput) {
+export async function create(input: CreateTicketInput, user: AuditActor) {
   const { items, ...data } = input;
-  const ticket = await prisma.repairTicket.create({
+  return prisma.$transaction(async tx => {
+  const ticket = await tx.repairTicket.create({
     data: {
       ...data,
       items: { create: items },
       history: {
         create: {
           status: "PENDING",
-          actor: data.requesterName,
+          actor: user.username,
           note: "สร้างคำขอแจ้งซ่อม / ขออุปกรณ์ IT",
         },
       },
     },
     include,
   });
+  await audit("TICKET_CREATED", user, String(ticket.id), undefined, tx);
   return serialize(ticket);
+  });
 }
 
 export async function get(id: number) {
@@ -128,7 +132,7 @@ export async function list(query: ListTicketsInput) {
 export async function update(
   id: number,
   input: UpdateTicketInput,
-  user: { displayName: string; role: UserRole },
+  user: AuditActor & { displayName: string; role: UserRole },
 ) {
   return prisma.$transaction(async (tx) => {
     const ticket = await tx.repairTicket.findUnique({ where: { id }, include });
@@ -164,6 +168,7 @@ export async function update(
         note: input.note,
       },
     });
+    await audit("TICKET_STATUS_UPDATED", user, String(id), JSON.stringify({ from: ticket.status, to: input.status }), tx);
     return serialize(
       await tx.repairTicket.findUniqueOrThrow({ where: { id }, include }),
     );

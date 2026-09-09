@@ -9,7 +9,7 @@ Express 5 + TypeScript + Prisma 6 / MySQL ระบบแจ้งซ่อม�
 - พิมพ์เอกสาร A4 เพื่อนำไปเซ็น การเปลี่ยนเป็น APPROVED คือบันทึกว่าได้รับเอกสารลงนามแล้ว ไม่ใช่ลายเซ็นดิจิทัล
 - เจ้าหน้าที่ Login ด้วย Username/Password ระบบเก็บรหัสผ่านด้วย scrypt hash และออก session token อายุ 8 ชั่วโมง
 - ไม่มีการลบเอกสารจากหน้าเว็บ ใช้ CANCELLED เพื่อรักษาประวัติ
-- การดูและสร้างคำขอเปิดให้ผู้ใช้เครือข่ายภายใน ส่วนการเปลี่ยนสถานะใช้ Role `ADMIN`, `IT`, `PROCUREMENT` และบันทึกชื่อจากบัญชีที่ Login เหมาะสำหรับเครือข่ายบริษัท/VPN และควรใช้ HTTPS เมื่อนำขึ้นใช้งาน
+- ทุกคนต้อง Login ก่อนดูหรือสร้างคำขอ บทบาทมี `USER`, `ADMIN`, `IT`, `PROCUREMENT` และมีสิทธิ์เพิ่มเติม `MANAGE_USERS`, `MANAGE_PERMISSIONS`, `VIEW_LOGS` ไม่มีสมัครสมาชิก ใช้ HTTPS เมื่อนำขึ้นใช้งาน
 
 ## เริ่มใช้งาน
 
@@ -50,13 +50,13 @@ workspace เดิมมีค่าสุ่มใน `.env.local` แล้�
 - `POST /api/auth/login` รับ `{username, password}` และคืน `{token, expiresAt, user}`
 - `GET /api/auth/me` ตรวจ session ปัจจุบันด้วย Bearer token
 - `POST /api/auth/logout` ยกเลิก session ปัจจุบัน
-- `POST /api/users` สร้าง User; บัญชีแรกใช้ `X-Bootstrap-Key` และต้องเป็น ADMIN บัญชีถัดไปใช้ Bearer token ของ ADMIN
+- `POST /api/users` สร้าง User; บัญชีแรกใช้ `X-Bootstrap-Key` และต้องเป็น ADMIN บัญชีถัดไปใช้ Bearer token ของ ADMIN หรือผู้มี MANAGE_USERS
 - `GET /api/tickets?page=1&limit=10&search=...&status=PENDING&sortBy=createdAt&order=desc` ค้นหาจากข้อมูลทั้งหมด `stats` เป็นยอดรวมทุกแผนก ไม่จำกัดตามตัวกรอง
 - `GET /api/tickets/:id` รายละเอียด รายการอุปกรณ์ ประวัติ และ allowedTransitions
 - `POST /api/tickets` สร้างคำขอพร้อมข้อมูลผู้ขอและ items
 - `PUT /api/tickets/:id` บันทึก `{status, note, version}` ต้อง Login และมี Role ที่ทำขั้นตอนนั้นได้
 
-Response ใช้ `{success: true, data: ...}` หรือ `{success: false, error: ...}` รายการมี `pagination` และ `stats` เพิ่มเติม ไม่มี DELETE endpoint
+Response ใช้ `{success: true, data: ...}` หรือ `{success: false, error: ...}` รายการมี `pagination` และ `stats` เพิ่มเติม ไม่มี DELETE endpoint สำหรับคำขอ ส่วนบัญชีผู้ใช้ใช้ DELETE แบบ soft delete
 
 ## สร้าง User ด้วย Postman
 
@@ -71,6 +71,8 @@ X-Bootstrap-Key: <ค่าจาก USER_BOOTSTRAP_KEY หรือค่าเ
   "username": "admin",
   "password": "รหัสผ่านอย่างน้อย 8 ตัว",
   "displayName": "ผู้ดูแลระบบ",
+  "department": "IT",
+  "branch": "สำนักงานใหญ่",
   "role": "ADMIN"
 }
 ```
@@ -98,17 +100,21 @@ Authorization: Bearer <data.token>
   "username": "it01",
   "password": "รหัสผ่านอย่างน้อย 8 ตัว",
   "displayName": "สมชาย ฝ่าย IT",
+  "department": "IT",
+  "branch": "สำนักงานใหญ่",
   "role": "IT"
 }
 ```
 
 เปลี่ยน `role` เป็น `PROCUREMENT` สำหรับฝ่ายจัดซื้อ Username ไม่สนตัวพิมพ์ใหญ่/เล็กและใช้เฉพาะตัวอักษรอังกฤษ ตัวเลข จุด ขีดกลาง และขีดล่าง ห้ามส่ง password จริงใน URL หรือบันทึกลง Git
 
-## ทดสอบ
+## จัดการผู้ใช้และ Log
 
-`npm test` ตรวจ input และ workflow โดยไม่เขียนฐานข้อมูล
+เพิ่มแผนก สาขา สิทธิ์เพิ่มเติม และ AuditLog ด้วย migration `202609090001_user_management` โดยไม่ลบข้อมูลเดิม หลัง migrate ให้ generate Prisma Client และ restart server
 
-Integration test: PowerShell ใช้ `$env:RUN_DB_TESTS='1'` แล้ว `npm test` สร้างข้อมูล QA ในฐานข้อมูล `.env` และลบเฉพาะ ID ที่ตัวทดสอบสร้างใน finally ใช้ฐานข้อมูล development/test เท่านั้น เลข auto-increment อาจมีช่องว่างหลังทดสอบ ซึ่งไม่กระทบความไม่ซ้ำ
+รายละเอียด endpoint และข้อกำหนดสิทธิ์: [คู่มือบัญชีและสิทธิ์](../client/docs/auth-handoff.md)
+
+ไม่มีไฟล์ automated test ผู้ใช้ดำเนินการทดสอบเอง
 
 ## Git ของโครงการเดิม
 

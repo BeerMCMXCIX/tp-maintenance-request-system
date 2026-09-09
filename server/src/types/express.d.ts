@@ -1,9 +1,9 @@
-import type { UserRole } from "../schemas/auth.schema";
+import type { AuthUser } from "../services/auth.service";
 
 declare global {
   namespace Express {
     interface Request {
-      authUser?: { id: number; username: string; displayName: string; role: UserRole };
+      authUser?: AuthUser;
       authTokenHash?: string;
     }
   }

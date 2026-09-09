@@ -2,6 +2,7 @@ import type { TicketStatus } from "../schemas/ticket.schema";
 import type { UserRole } from "../schemas/auth.schema";
 
 const permissions: Record<Exclude<UserRole, "ADMIN">, Readonly<Partial<Record<TicketStatus, readonly TicketStatus[]>>>> = {
+  USER: {},
   IT: {
     PENDING: ["IN_REVIEW", "CANCELLED"],
     IN_REVIEW: ["AWAITING_APPROVAL", "COMPLETED", "CANCELLED"],

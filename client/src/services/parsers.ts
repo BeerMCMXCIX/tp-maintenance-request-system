@@ -1,6 +1,8 @@
 import {
   isTicketStatus,
   roleLabels,
+  permissionLabels,
+  type Permission,
   statusLabels,
   type AuthSession,
   type AuthUser,
@@ -110,11 +112,17 @@ export function parseUser(value: unknown): AuthUser {
     username: string(user.username),
     displayName: string(user.displayName),
     role: role(user.role),
+    department: string(user.department),
+    branch: string(user.branch),
+    active: typeof user.active === "boolean" ? user.active : invalid(),
+    permissions: array(user.permissions, value =>
+      typeof value === "string" && Object.hasOwn(permissionLabels, value) ? value as Permission : invalid()),
   };
 }
 
 export function parseSession(value: unknown): AuthSession {
   const session = record(value);
+  if (typeof session.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(session.token)) return invalid();
   return {
     token: string(session.token),
     expiresAt: date(session.expiresAt),

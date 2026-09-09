@@ -6,7 +6,10 @@ const MAX_FAILURES = 5;
 const failures = new Map<string, { count: number; resetAt: number }>();
 
 export const loginRateLimit: RequestHandler = (req, res, next) => {
-  const username = typeof req.body?.username === "string" ? req.body.username.toLowerCase() : "";
+  const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";
+  for (const [entryKey, entry] of failures) {
+    if (entry.resetAt <= Date.now()) failures.delete(entryKey);
+  }
   const key = `${req.ip}:${username}`;
   const current = failures.get(key);
   if (current && current.resetAt > Date.now() && current.count >= MAX_FAILURES) {

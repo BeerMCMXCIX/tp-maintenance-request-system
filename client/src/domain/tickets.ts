@@ -10,16 +10,29 @@ export const statusLabels = {
 } as const;
 export type TicketStatus = keyof typeof statusLabels;
 export const roleLabels = {
+  USER: "ผู้ใช้งานทั่วไป",
   ADMIN: "ผู้ดูแลระบบ",
   IT: "เจ้าหน้าที่ IT",
   PROCUREMENT: "เจ้าหน้าที่จัดซื้อ",
 } as const;
 export type UserRole = keyof typeof roleLabels;
+export const permissionLabels = {
+  MANAGE_USERS: "จัดการผู้ใช้ / รีเซ็ตรหัสผ่าน",
+  MANAGE_PERMISSIONS: "จัดการสิทธิ์",
+  VIEW_LOGS: "ดู Log",
+} as const;
+export type Permission = keyof typeof permissionLabels;
+export const hasPermission = (user: AuthUser, permission: Permission) =>
+  user.role === "ADMIN" || user.permissions.includes(permission);
 export interface AuthUser {
   id: number;
   username: string;
   displayName: string;
   role: UserRole;
+  department: string;
+  branch: string;
+  active: boolean;
+  permissions: Permission[];
 }
 export interface AuthSession {
   token: string;
@@ -109,6 +122,7 @@ const roleTransitions: Record<
   Exclude<UserRole, "ADMIN">,
   Readonly<Partial<Record<TicketStatus, readonly TicketStatus[]>>>
 > = {
+  USER: {},
   IT: {
     PENDING: ["IN_REVIEW", "CANCELLED"],
     IN_REVIEW: ["AWAITING_APPROVAL", "COMPLETED", "CANCELLED"],

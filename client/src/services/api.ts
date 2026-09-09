@@ -6,6 +6,8 @@ import type {
 import { parsePage, parseSession, parseTicket, parseUser, record } from "./parsers";
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
+let accessToken: string | null = null;
+export function setAccessToken(token: string | null) { accessToken = token; }
 export class ApiError extends Error {
   readonly status: number;
   constructor(message: string, status: number) {
@@ -15,15 +17,23 @@ export class ApiError extends Error {
 }
 
 async function request(path: string, init?: RequestInit) {
+  const headers = new Headers(init?.headers);
+  if (accessToken && !headers.has("Authorization") && path !== "/auth/login") {
+    headers.set("Authorization", "Bearer " + accessToken);
+  }
   let response: Response;
   try {
-    response = await fetch(API_URL + path, init);
+    response = await fetch(API_URL + path, { ...init, headers });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError")
       throw error;
     throw new Error("เชื่อมต่อระบบไม่ได้ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่", {
       cause: error,
     });
+  }
+  if (response.status === 401 && path !== "/auth/login" &&
+      headers.get("Authorization") === "Bearer " + accessToken) {
+    window.dispatchEvent(new Event("auth-expired"));
   }
   let raw: unknown;
   try {
@@ -99,11 +109,19 @@ export async function logout(token: string) {
     headers: { Authorization: "Bearer " + token },
   });
 }
-export async function getMe(token: string) {
+export async function getMe(token: string, signal?: AbortSignal) {
   const body = await request("/auth/me", {
+    signal,
     headers: { Authorization: "Bearer " + token },
   });
   return parseUser(record(body.data).user);
 }
 export const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "เกิดข้อผิดพลาด กรุณาลองใหม่";
+
+export async function accountRequest(path: string, method = "GET", data?: unknown, signal?: AbortSignal) {
+  return (await request(path, {
+    method, signal,
+    ...(data === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
+  })).data;
+}
